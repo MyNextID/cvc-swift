@@ -66,3 +66,4 @@ fastlane/test_output
 .repomixignore
 repomix.config.json
 cvc-swift.xml
+cvc.xcframework.zip
