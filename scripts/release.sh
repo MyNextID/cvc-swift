@@ -27,7 +27,7 @@ print_error() {
 
 show_help() {
     cat << EOF
-CVC-Go Release Script
+CVC-Swift Release Script
 
 USAGE:
     $0 <VERSION> [OPTIONS]
@@ -47,17 +47,16 @@ EXAMPLES:
     $0 v1.3.0 --force
 
 DESCRIPTION:
-    This script automates the Go module release process:
+    This script automates the Swift package release process:
     1. Validates the version format
     2. Updates pre-compiled libraries using install.sh
-    3. Runs tests and checks
-    4. Creates and pushes Git tag
-    5. Makes the module available via 'go get'
+    3. Creates and pushes Git tag
+    4. Makes the package available via Swift Package Manager
 
 REQUIREMENTS:
     - Clean Git working directory
     - scripts/install.sh must exist
-    - Valid Go module (go.mod file)
+    - Valid Swift package (Package.swift file)
 EOF
 }
 
@@ -81,9 +80,9 @@ check_prerequisites() {
         exit 1
     fi
 
-    # Check if go.mod exists
-    if [[ ! -f "go.mod" ]]; then
-        print_error "go.mod file not found. This doesn't appear to be a Go module."
+    # Check if Package.swift exists
+    if [[ ! -f "Package.swift" ]]; then
+        print_error "Package.swift file not found. This doesn't appear to be a Swift package."
         exit 1
     fi
 
@@ -137,6 +136,39 @@ check_existing_tag() {
     print_success "Tag $version is available"
 }
 
+update_libraries() {
+    if [[ "$DRY_RUN" == "true" ]]; then
+        print_info "[DRY RUN] Would run: scripts/install.sh"
+        return 0
+    fi
+
+    print_info "Updating pre-compiled libraries..."
+
+    if ! ./scripts/install.sh; then
+        print_error "Failed to update libraries"
+        exit 1
+    fi
+
+    print_success "Libraries updated successfully"
+}
+
+commit_changes() {
+    if [[ "$DRY_RUN" == "true" ]]; then
+        print_info "[DRY RUN] Would commit any changes from library updates"
+        return 0
+    fi
+
+    # Check if there are any changes after running install.sh
+    if [[ -n $(git status --porcelain) ]]; then
+        print_info "Committing library updates..."
+        git add .
+        git commit -m "Update libraries for release $1"
+        print_success "Changes committed"
+    else
+        print_info "No changes to commit"
+    fi
+}
+
 create_and_push_tag() {
     local version="$1"
 
@@ -166,29 +198,13 @@ verify_release() {
     local version="$1"
 
     if [[ "$DRY_RUN" == "true" ]]; then
-        print_info "[DRY RUN] Would verify release with: go list -m github.com/MyNextID/cvc-go@$version"
+        print_info "[DRY RUN] Would verify release is available for Swift Package Manager"
         return 0
     fi
 
-    print_info "Verifying release (this may take a few minutes for the proxy to pick up the new version)..."
-
-    # Wait a bit for the tag to propagate
-    sleep 5
-
-    # Try to fetch the module (this will fail if not available yet, which is normal)
-    local module_path
-    module_path=$(grep '^module ' go.mod | awk '{print $2}')
-
-    print_info "Attempting to verify module: $module_path@$version"
-    print_info "Note: It may take a few minutes for the Go proxy to pick up the new version"
-
-    if go list -m "$module_path@$version" >/dev/null 2>&1; then
-        print_success "Module $module_path@$version is available!"
-    else
-        print_warning "Module verification failed (this is normal immediately after release)"
-        print_info "The module should be available within a few minutes"
-        print_info "Users can get it with: go get $module_path@$version"
-    fi
+    print_info "Release verification complete"
+    print_info "The package is now available for Swift Package Manager at:"
+    print_info "  https://github.com/MyNextID/cvc-swift"
 }
 
 main() {
@@ -236,7 +252,7 @@ main() {
         exit 1
     fi
 
-    print_info "CVC-Go Release Script"
+    print_info "CVC-Swift Release Script"
     print_info "Version: $VERSION"
     if [[ "$DRY_RUN" == "true" ]]; then
         print_warning "DRY RUN MODE - No changes will be made"
@@ -253,10 +269,9 @@ main() {
         echo
         print_info "Release Summary:"
         echo "  • Update libraries with install.sh"
-        echo "  • Run tests and checks"
         echo "  • Commit any changes"
         echo "  • Create and push tag: $VERSION"
-        echo "  • Make available via 'go get'"
+        echo "  • Make available via Swift Package Manager"
         echo
         read -p "Proceed with release? (y/N): " -n 1 -r
         echo
@@ -267,6 +282,8 @@ main() {
     fi
 
     echo
+    update_libraries
+    commit_changes "$VERSION"
     create_and_push_tag "$VERSION"
     verify_release "$VERSION"
 
@@ -274,7 +291,8 @@ main() {
     print_success "Release $VERSION completed successfully!"
     echo
     print_info "Next steps:"
-    echo "  • The module is now available for users: go get $(grep '^module ' go.mod | awk '{print $2}')@$VERSION"
+    echo "  • The package is now available for Swift Package Manager"
+    echo "  • Users can add it to their project: https://github.com/MyNextID/cvc-swift"
     echo "  • Monitor GitHub releases page for the new tag"
     echo "  • Update documentation if needed"
 
