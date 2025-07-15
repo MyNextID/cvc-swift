@@ -15,7 +15,7 @@ let package = Package(
         .binaryTarget(
             name: "cvc",
             url: "https://github.com/MyNextID/cvc-swift/releases/download/0.1.0/cvc.xcframework.zip",
-            checksum: "todo"
+            checksum: "f5a6b4cba5f9c00e6c9b4bdd79541622f1ef857d283c3496cc55d317f51860d8"
         ),
         .target(
             name: "cvc-swift",
