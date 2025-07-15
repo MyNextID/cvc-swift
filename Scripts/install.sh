@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# install.sh - Download CVC library artifacts for Go integration
+# install.sh - Download CVC library artifacts for iOS Swift integration
 # Usage: ./install.sh [version] [--help]
 # Example: ./install.sh v0.1.5
 
@@ -40,7 +40,7 @@ print_error() {
 
 show_help() {
     cat << EOF
-CVC Library Installer for Go
+CVC Library Installer for iOS Swift
 
 USAGE:
     $0 [VERSION] [OPTIONS]
@@ -60,65 +60,23 @@ EXAMPLES:
 
 DESCRIPTION:
     This script downloads pre-compiled CVC library static libraries and headers
-    for ALL supported platforms. This creates a complete Go module that users
-    can install with just 'go get' - no additional setup required.
+    for iOS development. This creates a complete Swift package that users
+    can install with just 'swift package manager' - no additional setup required.
 
     Downloaded files are placed in:
-    - lib/[platform]/[arch]/     Static libraries (.a/.lib) for all platforms
-    - include/                   Header files (.h)
+    - lib/ios-device/arm64/      Static library (.a) for iOS device
+    - lib/ios-simulator/arm64/   Static library (.a) for iOS simulator
+    - include/                   Header files (.h) with flat structure
 
 SUPPORTED PLATFORMS:
-    - macOS (darwin): arm64, x86_64
-    - Linux: x86_64, aarch64
-    - Windows: x86_64
+    - iOS Device: arm64
+    - iOS Simulator: arm64
 
 DEVELOPER WORKFLOW:
-    1. Run this script to populate your Go module with all platform libraries
+    1. Run this script to populate your Swift package with iOS libraries
     2. Commit the downloaded files to version control
-    3. Users can then simply 'go get your-module' with zero setup
+    3. Users can then simply add the package to their Xcode project
 EOF
-}
-
-detect_platform() {
-    case "$(uname -s)" in
-        Darwin*)
-            PLATFORM="darwin"
-            case "$(uname -m)" in
-                arm64) ARCH="arm64" ;;
-                x86_64) ARCH="x86_64" ;;
-                *)
-                    print_error "Unsupported macOS architecture: $(uname -m)"
-                    exit 1
-                    ;;
-            esac
-            ARCHIVE_EXT="tar.gz"
-            LIB_EXT="a"
-            ;;
-        Linux*)
-            PLATFORM="linux"
-            case "$(uname -m)" in
-                x86_64) ARCH="x86_64" ;;
-                aarch64|arm64) ARCH="aarch64" ;;
-                *)
-                    print_error "Unsupported Linux architecture: $(uname -m)"
-                    exit 1
-                    ;;
-            esac
-            ARCHIVE_EXT="tar.gz"
-            LIB_EXT="a"
-            ;;
-        MINGW*|MSYS*|CYGWIN*)
-            PLATFORM="windows"
-            ARCH="x86_64"
-            ARCHIVE_EXT="zip"
-            LIB_EXT="lib"
-            ;;
-        *)
-            print_error "Unsupported platform: $(uname -s)"
-            exit 1
-            ;;
-    esac
-    print_info "Detected platform: ${PLATFORM}/${ARCH}"
 }
 
 get_latest_version() {
@@ -154,7 +112,7 @@ verify_version() {
     print_success "Version ${version} found"
 }
 
-copy_headers_with_structure() {
+copy_headers_flat() {
     local temp_dir="$1"
     local is_first_run="$2"
 
@@ -163,46 +121,26 @@ copy_headers_with_structure() {
         return 0
     fi
 
-    print_info "Copying header files with proper directory structure..."
+    print_info "Copying header files with flat structure (preserving l8w8jwt directory)..."
 
     # Remove existing include directory if it exists
     if [ -d "$INCLUDE_DIR" ]; then
         rm -rf "$INCLUDE_DIR"
     fi
     mkdir -p "$INCLUDE_DIR"
+    mkdir -p "${INCLUDE_DIR}/l8w8jwt"
 
     # Find all header files in the extracted archive
     find "$temp_dir" -name "*.h" | while read -r header_file; do
         local filename=$(basename "$header_file")
         local relative_path="${header_file#$temp_dir/}"
 
-        # Handle l8w8jwt headers - put them in l8w8jwt subdirectory
+        # Handle l8w8jwt headers - keep them in l8w8jwt subdirectory
         if [[ "$relative_path" == *"l8w8jwt"* ]] || [[ "$filename" == l8w8jwt* ]]; then
-            mkdir -p "${INCLUDE_DIR}/l8w8jwt"
             cp "$header_file" "${INCLUDE_DIR}/l8w8jwt/"
             print_success "Installed header: l8w8jwt/$filename"
-        # Handle include/include nested structure - flatten it
-        elif [[ "$relative_path" == "include/include/"* ]]; then
-            # Extract just the filename and put it directly in include/
-            cp "$header_file" "${INCLUDE_DIR}/"
-            print_success "Installed header: $filename"
-        # Handle other nested include structures
-        elif [[ "$relative_path" == "include/"* ]]; then
-            # Copy to include root, preserving any subdirectory structure after include/
-            local target_path="${relative_path#include/}"
-            if [[ "$target_path" == *"/"* ]]; then
-                # Has subdirectory structure
-                local target_dir=$(dirname "$target_path")
-                mkdir -p "${INCLUDE_DIR}/${target_dir}"
-                cp "$header_file" "${INCLUDE_DIR}/${target_path}"
-                print_success "Installed header: $target_path"
-            else
-                # Direct file
-                cp "$header_file" "${INCLUDE_DIR}/"
-                print_success "Installed header: $filename"
-            fi
-        # Handle direct header files (crypto.h, cvc.h, etc.)
         else
+            # Copy all other headers directly to include/ directory (flat structure)
             cp "$header_file" "${INCLUDE_DIR}/"
             print_success "Installed header: $filename"
         fi
@@ -215,23 +153,7 @@ download_and_extract() {
     local arch="$3"
     local is_first_run="$4"
 
-    local archive_ext lib_ext
-    case "$platform" in
-        "darwin"|"linux")
-            archive_ext="tar.gz"
-            lib_ext="a"
-            ;;
-        "windows")
-            archive_ext="zip"
-            lib_ext="lib"
-            ;;
-        *)
-            print_error "Unknown platform: $platform"
-            return 1
-            ;;
-    esac
-
-    local archive_name="libcvc-${platform}-${arch}.${archive_ext}"
+    local archive_name="libcvc-${platform}-${arch}.tar.gz"
     local download_url="${GITHUB_DOWNLOAD_URL}/${version}/${archive_name}"
     local temp_dir
     temp_dir=$(mktemp -d)
@@ -250,31 +172,19 @@ download_and_extract() {
 
     print_info "Extracting ${archive_name}..."
     cd "$temp_dir"
-    case "$archive_ext" in
-        "tar.gz")
-            if ! tar -xzf "$archive_name"; then
-                print_error "Failed to extract tar.gz archive"
-                cd - > /dev/null
-                rm -rf "$temp_dir"
-                return 1
-            fi
-            ;;
-        "zip")
-            if ! unzip -q "$archive_name"; then
-                print_error "Failed to extract zip archive"
-                cd - > /dev/null
-                rm -rf "$temp_dir"
-                return 1
-            fi
-            ;;
-    esac
+    if ! tar -xzf "$archive_name"; then
+        print_error "Failed to extract tar.gz archive"
+        cd - > /dev/null
+        rm -rf "$temp_dir"
+        return 1
+    fi
     cd - > /dev/null
 
     # Copy static library
     local lib_file
-    lib_file=$(find "$temp_dir" -name "*.${lib_ext}" | head -1)
+    lib_file=$(find "$temp_dir" -name "*.a" | head -1)
     if [ -z "$lib_file" ]; then
-        print_error "No static library (.${lib_ext}) found in archive"
+        print_error "No static library (.a) found in archive"
         rm -rf "$temp_dir"
         return 1
     fi
@@ -282,57 +192,41 @@ download_and_extract() {
     cp "$lib_file" "$lib_target_dir/"
     print_success "Installed library: ${lib_target_dir}/$(basename "$lib_file")"
 
-    # Copy headers (only on first run)
-    copy_headers_with_structure "$temp_dir" "$is_first_run"
+    # Copy headers with flat structure (only on first run)
+    copy_headers_flat "$temp_dir" "$is_first_run"
 
     rm -rf "$temp_dir"
     return 0
 }
 
-get_platform_archs() {
-    local platform="$1"
-    case "$platform" in
-        "darwin")
-            echo "arm64"
-            ;;
-        "linux")
-            echo "x86_64 aarch64"
-            ;;
-        "windows")
-            echo "x86_64"
-            ;;
-        *)
-            echo ""
-            ;;
-    esac
-}
-
-# Download all platforms
-download_all_platforms() {
+# Download iOS platforms
+download_ios_platforms() {
     local version="$1"
     local failed_downloads=()
-    local platforms="darwin linux windows"
     local is_first_run=true
 
-    print_info "Downloading CVC library for all platforms..."
+    print_info "Downloading CVC library for iOS platforms..."
     echo
 
-    for platform in $platforms; do
-        local archs
-        archs=$(get_platform_archs "$platform")
-        for arch in $archs; do
-            print_info "Processing ${platform}/${arch}..."
-            if ! download_and_extract "$version" "$platform" "$arch" "$is_first_run"; then
-                failed_downloads+=("${platform}/${arch}")
-                print_warning "Failed to download ${platform}/${arch}"
-            fi
-            is_first_run=false  # Only first extraction should copy headers
-            echo
-        done
-    done
+    # iOS Device
+    print_info "Processing ios-device/arm64..."
+    if ! download_and_extract "$version" "ios-device" "arm64" "$is_first_run"; then
+        failed_downloads+=("ios-device/arm64")
+        print_warning "Failed to download ios-device/arm64"
+    fi
+    is_first_run=false  # Only first extraction should copy headers
+    echo
+
+    # iOS Simulator
+    print_info "Processing ios-simulator/arm64..."
+    if ! download_and_extract "$version" "ios-simulator" "arm64" "$is_first_run"; then
+        failed_downloads+=("ios-simulator/arm64")
+        print_warning "Failed to download ios-simulator/arm64"
+    fi
+    echo
 
     if [ ${#failed_downloads[@]} -eq 0 ]; then
-        print_success "All platforms downloaded successfully!"
+        print_success "All iOS platforms downloaded successfully!"
     else
         print_warning "Some downloads failed:"
         for failed in "${failed_downloads[@]}"; do
@@ -376,7 +270,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 main() {
-    print_info "CVC Library Installer for Go (All Platforms)"
+    print_info "CVC Library Installer for iOS Swift"
     echo
 
     # Get version
@@ -403,23 +297,20 @@ main() {
     fi
 
     # Download everything
-    download_all_platforms "$VERSION"
+    download_ios_platforms "$VERSION"
 
     echo
-    print_success "CVC library $VERSION installed for all platforms!"
+    print_success "CVC library $VERSION installed for iOS platforms!"
     print_info "Repository structure:"
     echo "  lib/"
-    local platforms="darwin linux windows"
-    for platform in $platforms; do
-        local archs
-        archs=$(get_platform_archs "$platform")
-        for arch in $archs; do
-            if [ -d "${LIB_DIR}/${platform}/${arch}" ]; then
-                echo "    ├── ${platform}/${arch}/"
-                ls "${LIB_DIR}/${platform}/${arch}/" | sed 's/^/    │   ├── /'
-            fi
-        done
-    done
+    if [ -d "${LIB_DIR}/ios-device/arm64" ]; then
+        echo "    ├── ios-device/arm64/"
+        ls "${LIB_DIR}/ios-device/arm64/" | sed 's/^/    │   ├── /'
+    fi
+    if [ -d "${LIB_DIR}/ios-simulator/arm64" ]; then
+        echo "    ├── ios-simulator/arm64/"
+        ls "${LIB_DIR}/ios-simulator/arm64/" | sed 's/^/    │   ├── /'
+    fi
     echo "  include/"
     if [ -d "$INCLUDE_DIR" ]; then
         ls "$INCLUDE_DIR/" | sed 's/^/    ├── /'
@@ -427,9 +318,9 @@ main() {
 
     echo
     print_info "Next steps:"
-    echo "  1. Commit all files to Git: git add lib/ include/ && git commit -m 'Add CVC $VERSION libraries'"
-    echo "  2. Users can now simply: go get your-module"
-    echo "  3. No installation required for end users!"
+    echo "  1. Commit all files to Git: git add lib/ include/ && git commit -m 'Add CVC $VERSION iOS libraries'"
+    echo "  2. Users can now add this Swift package to their Xcode project"
+    echo "  3. No additional setup required for end users!"
 }
 
 main "$@"
