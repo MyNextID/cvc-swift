@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "cvc-swift",
     platforms: [
-        .iOS(.v18)
+        .iOS(.v18)  // int128 requirements
     ],
     products: [
         .library(
@@ -14,7 +14,8 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "cvc",
-            path: "cvc.xcframework"
+            url: "https://github.com/MyNextID/cvc-swift/releases/download/0.1.0/cvc.xcframework.zip",
+            checksum: "todo"
         ),
         .target(
             name: "cvc-swift",
