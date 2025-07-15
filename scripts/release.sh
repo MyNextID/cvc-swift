@@ -49,13 +49,11 @@ EXAMPLES:
 DESCRIPTION:
     This script automates the Swift package release process:
     1. Validates the version format
-    2. Updates pre-compiled libraries using install.sh
-    3. Creates and pushes Git tag
-    4. Makes the package available via Swift Package Manager
+    2. Creates and pushes Git tag
+    3. Makes the package available via Swift Package Manager
 
 REQUIREMENTS:
     - Clean Git working directory
-    - scripts/install.sh must exist
     - Valid Swift package (Package.swift file)
 EOF
 }
@@ -83,12 +81,6 @@ check_prerequisites() {
     # Check if Package.swift exists
     if [[ ! -f "Package.swift" ]]; then
         print_error "Package.swift file not found. This doesn't appear to be a Swift package."
-        exit 1
-    fi
-
-    # Check if install.sh exists
-    if [[ ! -f "scripts/install.sh" ]]; then
-        print_error "scripts/install.sh not found. Cannot update libraries."
         exit 1
     fi
 
@@ -134,39 +126,6 @@ check_existing_tag() {
     fi
 
     print_success "Tag $version is available"
-}
-
-update_libraries() {
-    if [[ "$DRY_RUN" == "true" ]]; then
-        print_info "[DRY RUN] Would run: scripts/install.sh"
-        return 0
-    fi
-
-    print_info "Updating pre-compiled libraries..."
-
-    if ! ./scripts/install.sh; then
-        print_error "Failed to update libraries"
-        exit 1
-    fi
-
-    print_success "Libraries updated successfully"
-}
-
-commit_changes() {
-    if [[ "$DRY_RUN" == "true" ]]; then
-        print_info "[DRY RUN] Would commit any changes from library updates"
-        return 0
-    fi
-
-    # Check if there are any changes after running install.sh
-    if [[ -n $(git status --porcelain) ]]; then
-        print_info "Committing library updates..."
-        git add .
-        git commit -m "Update libraries for release $1"
-        print_success "Changes committed"
-    else
-        print_info "No changes to commit"
-    fi
 }
 
 create_and_push_tag() {
@@ -268,8 +227,6 @@ main() {
     if [[ "$FORCE" != "true" && "$DRY_RUN" != "true" ]]; then
         echo
         print_info "Release Summary:"
-        echo "  • Update libraries with install.sh"
-        echo "  • Commit any changes"
         echo "  • Create and push tag: $VERSION"
         echo "  • Make available via Swift Package Manager"
         echo
@@ -282,8 +239,6 @@ main() {
     fi
 
     echo
-    update_libraries
-    commit_changes "$VERSION"
     create_and_push_tag "$VERSION"
     verify_release "$VERSION"
 
