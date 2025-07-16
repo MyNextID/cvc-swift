@@ -1,0 +1,11 @@
+module cvc {
+    umbrella header "cvc.h"
+    export *
+
+    explicit module l8w8jwt {
+        header "l8w8jwt/encode.h"
+        header "l8w8jwt/decode.h"
+        header "l8w8jwt/algs.h"
+        export *
+    }
+}

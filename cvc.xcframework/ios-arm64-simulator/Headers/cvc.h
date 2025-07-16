@@ -1,34 +1,28 @@
 //
 // Created by Peter Paravinja on 11. 7. 25.
 //
+#ifndef CVC_UMBRELLA_H
+#define CVC_UMBRELLA_H
 
-#ifndef CVC_H
-#define CVC_H
+// Import main CVC headers
+#include "crypto.h"
+#include "core.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+// ECDH headers
+#include "ecdh_Ed25519.h"
+#include "ecdh_NIST256.h"
 
-    // ============================================================================
-    // Include external library headers to expose their functions
-    // ============================================================================
+// ECP headers
+#include "ecp_Ed25519.h"
+#include "ecp_NIST256.h"
 
-    // MIRACL Core includes - expose elliptic curve cryptography
-#include "core.h"          // Main MIRACL core functions
-#include "ecdh_Ed25519.h"   // Curve25519 ECDH
-#include "ecdh_NIST256.h"   // Curve25519 ECDH
-#include "ecp_Ed25519.h"   // NIST P-256 curve
-#include "ecp_NIST256.h"       // NIST P-256 curve
-#include "eddsa_Ed25519.h"     // NIST P-256 curve
-#include "eddsa_NIST256.h"   // NIST P-256 curve
+// EDDSA headers
+#include "eddsa_Ed25519.h"
+#include "eddsa_NIST256.h"
 
-    // l8w8jwt includes - expose JWT functionality
-#include "l8w8jwt/encode.h"  // JWT encoding
-#include "l8w8jwt/decode.h"  // JWT decoding
-#include "l8w8jwt/algs.h"    // Algorithm definitions
+// JWT headers
+#include "l8w8jwt/encode.h"
+#include "l8w8jwt/decode.h"
+#include "l8w8jwt/algs.h"
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif // CVC_H
+#endif /* CVC_UMBRELLA_H */

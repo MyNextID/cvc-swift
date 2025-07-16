@@ -2,28 +2,29 @@
 import PackageDescription
 
 let package = Package(
-    name: "cvc-swift",
+    name: "CVC",
     platforms: [
-        .iOS(.v18)  // int128 requirements
+        .iOS(.v18)
     ],
     products: [
         .library(
-            name: "cvc-swift",
-            targets: ["cvc-swift"])
+            name: "CVC",
+            targets: ["CVC"])
     ],
     targets: [
         .binaryTarget(
             name: "cvc",
-            url: "https://github.com/MyNextID/cvc-swift/releases/download/v0.1.3/cvc.xcframework.zip",
-            checksum: "f5a6b4cba5f9c00e6c9b4bdd79541622f1ef857d283c3496cc55d317f51860d8"
+            path: "cvc.xcframework"
         ),
         .target(
-            name: "cvc-swift",
-            dependencies: ["cvc"]
+            name: "CVC",
+            dependencies: ["cvc"],
+            path: "Sources/CVC"
         ),
         .testTarget(
-            name: "cvc-swiftTests",
-            dependencies: ["cvc-swift"]
-        ),
+            name: "CVCTests",
+            dependencies: ["CVC"],
+            path: "Tests/CVCTests"
+        )
     ]
 )

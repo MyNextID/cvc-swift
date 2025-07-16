@@ -1,10 +1,31 @@
+# Get newer CVC library
+
+Use `install.sh` script first and specify the version that you want.
+Look at https://github.com/MyNextID/cvc/releases to get the correct version example: `v0.2.0`
+
+```bash
+scripts/release.sh v0.1.3
+```
+
+```bash
+xcodebuild -create-xcframework \
+-library lib/ios-device/arm64/libcvc.a \
+-headers include/ \
+-library lib/ios-simulator/arm64/libcvc.a \
+-headers include/ \
+-output cvc.xcframework
+```
+
 # XCFramework Distribution via Swift Package Manager
 
-This guide explains how to distribute your XCFramework as a public Swift Package that can be consumed by iOS 18+ projects.
+This guide explains how to distribute your XCFramework as a public Swift Package that can be consumed by iOS 18+
+projects.
 
 ## Overview
 
-Your `cvc.xcframework` contains C library code with `int128` support, which requires iOS 18+ devices. This guide will help you:
+Your `cvc.xcframework` contains C library code with `int128` support, which requires iOS 18+ devices. This guide will
+help you:
+
 1. Prepare your XCFramework for distribution
 2. Create GitHub releases with proper assets
 3. Update your Package.swift for public consumption
@@ -31,7 +52,8 @@ cd /path/to/your/cvc-swift-project
 zip -r cvc.xcframework.zip cvc.xcframework
 ```
 
-**Why ZIP?** Swift Package Manager requires binary targets to be distributed as ZIP files with specific checksums for security and integrity verification.
+**Why ZIP?** Swift Package Manager requires binary targets to be distributed as ZIP files with specific checksums for
+security and integrity verification.
 
 ### Step 2: Compute the Checksum
 
@@ -43,6 +65,7 @@ swift package compute-checksum cvc.xcframework.zip
 ```
 
 **Example output:**
+
 ```
 a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456
 ```
@@ -105,6 +128,7 @@ let package = Package(
 ```
 
 **Key changes:**
+
 - ✅ `url`: Points to your GitHub release ZIP file
 - ✅ `checksum`: Replace `PASTE_YOUR_CHECKSUM_HERE` with the checksum from Step 2
 - ✅ Version in URL matches your GitHub release tag
@@ -141,12 +165,14 @@ If successful, you should see output indicating the package resolved correctly.
 Once published, developers can add your package to their iOS 18+ projects:
 
 ### In Xcode:
+
 1. **File → Add Package Dependencies...**
 2. **Enter URL**: `https://github.com/MyNextID/cvc-swift`
 3. **Select version**: `1.0.0` (or latest)
 4. **Add to target**
 
 ### In another Package.swift:
+
 ```swift
 dependencies: [
     .package(url: "https://github.com/MyNextID/cvc-swift", from: "1.0.0")
@@ -154,6 +180,7 @@ dependencies: [
 ```
 
 ### Usage in Swift code:
+
 ```swift
 import cvc_swift
 
@@ -173,14 +200,17 @@ When you need to release a new version (e.g., 1.1.0):
 ## Troubleshooting
 
 ### ❌ "No such module 'cvc_swift'"
+
 - Verify the import name matches your target name
 - Check that iOS deployment target is 18.0+
 
 ### ❌ Checksum validation failed
+
 - Ensure the checksum in Package.swift exactly matches the computed checksum
 - Verify the ZIP file wasn't corrupted during upload
 
 ### ❌ Cannot resolve package dependencies
+
 - Check that the GitHub release URL is publicly accessible
 - Verify the tag exists in your repository
 - Ensure the ZIP file is attached to the release
@@ -195,6 +225,7 @@ When you need to release a new version (e.g., 1.1.0):
 ## Repository Structure
 
 Your final repository should look like:
+
 ```
 cvc-swift/
 ├── Package.swift          # Updated with remote URL and checksum
